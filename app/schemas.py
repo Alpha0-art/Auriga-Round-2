@@ -39,3 +39,32 @@ class AvailabilityItem(BaseModel):
 class AvailabilityResponse(BaseModel):
     show_id: int
     tiers: list[AvailabilityItem]
+
+
+class ImportedPriceResponse(BaseModel):
+    row: str
+    canonical_name: str
+    price: str
+
+
+class DeduplicatedPriceResponse(BaseModel):
+    row: str
+    merged_into: str
+    reason: str
+
+
+class RejectedPriceResponse(BaseModel):
+    row: str
+    reason: str
+
+
+class ImportReportResponse(BaseModel):
+    id: int
+    source_filename: str
+    imported_count: int
+    deduplicated_count: int
+    rejected_count: int
+    created_at: datetime
+    imported: list[ImportedPriceResponse]
+    deduplicated: list[DeduplicatedPriceResponse]
+    rejected: list[RejectedPriceResponse]

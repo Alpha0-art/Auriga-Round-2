@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -98,3 +98,14 @@ class BookingLineItem(Base):
     description: Mapped[str] = mapped_column(String(300), nullable=False)
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     booking: Mapped[Booking] = relationship(back_populates="line_items")
+
+
+class ImportReport(Base):
+    __tablename__ = "import_reports"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    imported_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    deduplicated_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    rejected_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    report_detail: Mapped[str] = mapped_column(Text, nullable=False)

@@ -18,7 +18,7 @@ python -m pip install -r requirements.txt
 
 ## Seed and run
 
-The seed script creates `cinema.db` with 2 cinemas, 3 screens, 3 shows, 3 tiers per show, individual seats, and flat plus capped-percentage offers.
+The seed script creates `cinema.db` with 2 cinemas, 3 screens, 3 shows, 3 tiers per show, individual seats, and flat plus capped-percentage offers. The deliberately messy sample price list is at `scripts/sample_messy_prices.csv`.
 
 ```bash
 python -m scripts.seed
@@ -41,6 +41,17 @@ curl -X POST http://127.0.0.1:8000/shows/1/book \
 	-d '{"selections":[{"tier_id":1,"quantity":2}],"offer_code":"FEST100"}'
 curl http://127.0.0.1:8000/bookings/1
 ```
+
+Import the sample CSV and receive the complete cleaning report. The endpoint accepts a raw `text/csv` request body, and stores the supplied filename with the report.
+
+```bash
+curl -X POST 'http://127.0.0.1:8000/price-lists/import?filename=sample_messy_prices.csv' \
+	-H 'content-type: text/csv' \
+	--data-binary @scripts/sample_messy_prices.csv
+curl http://127.0.0.1:8000/price-lists/imports/1
+```
+
+The report's `imported` entries are cleaned tier name/price inputs for show creation. Every data row appears in exactly one of `imported`, `deduplicated`, or `rejected`.
 
 Every quote and booking response contains additive `line_items` and `total_payable`. Subtotal rows are informational zero-value rows whose exact amount is included in the description; this avoids double-counting a subtotal while preserving a complete displayed breakdown.
 

@@ -1,17 +1,19 @@
+import json
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from .config import Settings, get_settings
 from .database import Base, build_engine
-from .models import Booking, BookingLineItem, Offer, Seat, SeatStatus, SeatTier, Show
+from .models import Booking, BookingLineItem, ImportReport, Offer, Seat, SeatStatus, SeatTier, Show
+from .price_import import ImportReportData, import_prices
 from .pricing_engine import PriceOffer, PriceTier, PricingError, calculate_price, money
-from .schemas import AvailabilityItem, AvailabilityResponse, BillLineItem, BillResponse, BookingRequest, BookingResponse
+from .schemas import AvailabilityItem, AvailabilityResponse, BillLineItem, BillResponse, BookingRequest, BookingResponse, ImportReportResponse
 
 
 def now_utc() -> datetime:
@@ -78,6 +80,21 @@ def bill_response(bill) -> BillResponse:
     return BillResponse(line_items=[BillLineItem(description=item.description, amount=cents(item.amount)) for item in bill.line_items], total_payable=cents(bill.total_payable))
 
 
+def report_payload(report: ImportReportData) -> dict:
+    return {
+        "imported": [{"row": item.row, "canonical_name": item.canonical_name, "price": cents(item.price)} for item in report.imported],
+        "deduplicated": [{"row": item.row, "merged_into": item.merged_into, "reason": item.reason} for item in report.deduplicated],
+        "rejected": [{"row": item.row, "reason": item.reason} for item in report.rejected],
+    }
+
+
+def import_response(record: ImportReport) -> ImportReportResponse:
+    detail = json.loads(record.report_detail)
+    return ImportReportResponse(id=record.id, source_filename=record.source_filename, imported_count=record.imported_count,
+        deduplicated_count=record.deduplicated_count, rejected_count=record.rejected_count, created_at=record.created_at,
+        imported=detail["imported"], deduplicated=detail["deduplicated"], rejected=detail["rejected"])
+
+
 def create_app(database_url: str | None = None, settings: Settings | None = None) -> FastAPI:
     app = FastAPI(title="Cinema Ticket Pricing and Booking Engine", version="1.0.0")
     engine = build_engine(database_url)
@@ -97,6 +114,29 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
     @app.get("/", include_in_schema=False)
     def root():
         return RedirectResponse(url="/docs")
+
+    @app.post("/price-lists/import", response_model=ImportReportResponse, status_code=status.HTTP_201_CREATED)
+    async def import_price_list(request: Request, filename: str = Query("uploaded.csv"), db: Session = Depends(db_dependency)):
+        if not filename.lower().endswith(".csv"):
+            raise HTTPException(status_code=400, detail="Upload a CSV file")
+        try:
+            report = import_prices((await request.body()).decode("utf-8-sig"))
+        except UnicodeDecodeError as error:
+            raise HTTPException(status_code=400, detail="CSV must be UTF-8 encoded") from error
+        detail = report_payload(report)
+        record = ImportReport(source_filename=filename, imported_count=len(report.imported),
+            deduplicated_count=len(report.deduplicated), rejected_count=len(report.rejected), report_detail=json.dumps(detail))
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        return import_response(record)
+
+    @app.get("/price-lists/imports/{report_id}", response_model=ImportReportResponse)
+    def get_import_report(report_id: int, db: Session = Depends(db_dependency)):
+        record = db.get(ImportReport, report_id)
+        if not record:
+            raise HTTPException(status_code=404, detail="Import report not found")
+        return import_response(record)
 
     @app.post("/shows/{show_id}/quote", response_model=BillResponse)
     def quote(show_id: int, request: BookingRequest, db: Session = Depends(db_dependency)):

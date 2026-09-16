@@ -14,6 +14,10 @@ The default taxable base is the convenience fee only. `GST_TAXABLE_BASE` can sel
 
 Bill component rows are additive. The displayed Subtotal and Discounted Subtotal rows are informational zero-value rows with their calculated values in the description; otherwise including both component lines and summary lines would double-count. The randomized pricing test asserts that the sum of every returned amount equals the final total exactly.
 
+## Messy price import
+
+The CSV pipeline normalizes whitespace and case to Title Case, strips `₹`, `Rs.`, `INR`, commas, and the `/-` suffix, and parses prices as Decimal. Blank, negative, and unparseable prices are rejected with their exact reason. Duplicate names are compared case-insensitively after normalization; the first valid occurrence wins and later rows are reported with the retained canonical name and the reason. Every data row is placed in exactly one report bucket. Full reports are persisted in `import_reports`, and the returned imported entries are directly usable as cleaned seat-tier inputs.
+
 ## Concurrency and sellout safety
 
 SQLite connections disable its implicit transaction mode and use an explicit `BEGIN IMMEDIATE` for every SQLAlchemy transaction. A booking request therefore obtains SQLite's reserved write lock before it checks availability. It selects available Seat rows inside that transaction, verifies the requested count, changes those exact rows to `BOOKED`, inserts the booking and line items, and commits as one unit. Other writers wait on SQLite's configured busy timeout, then see the committed seat state and receive HTTP 409. The ten-thread test exercises this behavior against one remaining seat.

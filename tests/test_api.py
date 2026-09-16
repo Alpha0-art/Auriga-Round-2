@@ -61,3 +61,24 @@ def test_invalid_and_sellout_requests_are_clear_conflicts(client):
     sold_out = api.post(f"/shows/{show_id}/book", json={"selections": [{"tier_id": tier_id, "quantity": 1}]})
     assert sold_out.status_code == 409
     assert "available seats" in sold_out.json()["detail"]
+
+
+def test_price_list_import_persists_full_report(client):
+    api, _, _ = client
+    csv_content = "seat_class,price\nGold,400\nGOLD,399\nSilver,₹250.00\nBalcony,\nRecliner,-50\n"
+    response = api.post("/price-lists/import?filename=prices.csv", content=csv_content, headers={"content-type": "text/csv"})
+    assert response.status_code == 201
+    body = response.json()
+    assert body["imported_count"] == 2
+    assert body["deduplicated_count"] == 1
+    assert body["rejected_count"] == 2
+    assert body["imported"][0]["price"] == "400.00"
+    stored = api.get(f"/price-lists/imports/{body['id']}")
+    assert stored.status_code == 200
+    assert stored.json() == body
+
+
+def test_price_list_import_rejects_non_csv(client):
+    api, _, _ = client
+    response = api.post("/price-lists/import?filename=prices.txt", content="Gold,400", headers={"content-type": "text/csv"})
+    assert response.status_code == 400

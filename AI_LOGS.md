@@ -108,6 +108,10 @@ HARD CONSTRAINTS — do not violate:
 
 Now design the schema, the pricing/discount/tax module, the booking service with concurrency safety, the API layer, and the full test suite, and implement all of it completely and correctly.
 
+## Latest feature log
+
+The expanded backend-only specification added messy CSV seat-class import. The implementation added `app/price_import.py`, `scripts/sample_messy_prices.csv`, the `ImportReport` table, `POST /price-lists/import`, `GET /price-lists/imports/{report_id}`, mutually exclusive report buckets, importer tests, API persistence tests, and documentation of the first-valid-occurrence duplicate rule. The raw `text/csv` endpoint has no frontend/UI dependency. The expanded suite passes 15 tests.
+
 ## Assistant work log
 
 The assistant inspected the repository and found only the initial README. It created the requirements file, SQLAlchemy models, file-backed SQLite database setup, Pydantic schemas, Decimal pricing engine, FastAPI application, seed script, and pytest suites. SQLite is configured with `isolation_level = None`, foreign keys, a busy timeout, and an explicit `BEGIN IMMEDIATE` on each transaction. The selected offer policy is exactly one offer per booking, and the default GST base is the convenience fee.
