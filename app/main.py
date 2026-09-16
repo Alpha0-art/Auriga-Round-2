@@ -3,6 +3,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
@@ -92,6 +93,10 @@ def create_app(database_url: str | None = None, settings: Settings | None = None
             yield db
         finally:
             db.close()
+
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse(url="/docs")
 
     @app.post("/shows/{show_id}/quote", response_model=BillResponse)
     def quote(show_id: int, request: BookingRequest, db: Session = Depends(db_dependency)):
