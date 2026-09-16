@@ -1,0 +1,13 @@
+seat_class,price
+ Gold , ₹250
+GOLD,399
+silver,250.5
+Silver,250
+Recliner,Rs. 300
+RECLINER,300/-
+Balcony,
+Premium,-50
+Executive,not-a-price
+Economy,275.00
+VIP,"₹1,200.00"
+Zero,0

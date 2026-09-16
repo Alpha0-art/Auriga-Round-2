@@ -1,3 +1,17 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+pythonpath = ["src"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ticket-pricing"
+version = "1.0.0"
+description = "Exact-Decimal cinema ticket pricing library and counter CLI"
+requires-python = ">=3.11"
+
+[tool.setuptools.packages.find]
+where = ["src"]

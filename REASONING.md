@@ -1,5 +1,7 @@
 # Design Reasoning
 
+This repository is backend/API-only by design. The reusable `src/ticket_pricing` package and counter CLI are the canonical library surfaces; the FastAPI service remains available for HTTP integration and database-backed show/seat booking.
+
 ## Domain model
 
 Cinema, Screen, and Show are separate because a venue can have multiple screens and each screen can host many scheduled shows. SeatTier belongs to a show because prices and inventory can differ by show. Seat is an individual row, rather than a counter, so the system can claim concrete seats and prove that no seat was booked twice. Offers are independent, time-bounded records. Booking and BookingLineItem preserve the charged bill exactly as it was committed.
@@ -16,7 +18,7 @@ Bill component rows are additive. The displayed Subtotal and Discounted Subtotal
 
 ## Messy price import
 
-The CSV pipeline normalizes whitespace and case to Title Case, strips `₹`, `Rs.`, `INR`, commas, and the `/-` suffix, and parses prices as Decimal. Blank, negative, and unparseable prices are rejected with their exact reason. Duplicate names are compared case-insensitively after normalization; the first valid occurrence wins and later rows are reported with the retained canonical name and the reason. Every data row is placed in exactly one report bucket. Full reports are persisted in `import_reports`, and the returned imported entries are directly usable as cleaned seat-tier inputs.
+The CSV, JSON, and Excel pipeline normalizes whitespace and case to Title Case, strips `₹`, `Rs.`, `INR`, commas, and the `/-` suffix, and parses prices as Decimal. Blank, zero, negative, and unparseable prices are rejected with their exact reason. Duplicate names are compared case-insensitively after normalization; the first valid occurrence wins and later rows are reported with the retained canonical name and the reason. Every data row is placed in exactly one report bucket. The CLI persists cleaned prices in JSON, while the HTTP service persists full import reports in `import_reports`.
 
 ## Concurrency and sellout safety
 
